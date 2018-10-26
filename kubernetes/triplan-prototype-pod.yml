@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: triplan-prototype
+  labels:
+    app: triplan-prototype
+spec:
+  containers:
+  - name: triplan-prototype
+    image: pengyue/triplan-prototype
+    ports:
+    - name: prototype-port
+      containerPort: 8000
+    livenessProbe:
+      httpGet:
+        path: /health-readiness
+        port: 8000
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /health-liveness
+        port: 8000
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 3
+

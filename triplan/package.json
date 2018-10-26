@@ -1,0 +1,20 @@
+{
+  "name": "triplan-content-scraper",
+  "version": "0.0.1",
+  "description": "",
+  "main": "app.js",
+  "author": "Peng Yue <zippo_yp@hotmail.com>",
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "country-json": "^1.0.7",
+    "ejs": "^2.6.1",
+    "express": "^4.16.3",
+    "kafka-node": "^3.0.1",
+    "puppeteer": "^1.3.0"
+  }
+}

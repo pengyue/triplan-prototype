@@ -1,0 +1,4 @@
+.DS_Store
+.idea
+triplan/node_modules
+triplan/package-lock.json
