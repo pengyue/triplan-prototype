@@ -15,6 +15,6 @@ kafkaProducer.produce = function(client, topicName, eventKey, event) {
         if (err) {
             console.error("Failed to publish event with key " + eventKey + " to topic " + topicName + " :" + JSON.stringify(err));
         }
-        console.log("Published event with key " + eventKey + " to topic " + topicName + " :" + JSON.stringify(event));
+        console.log("Published event with key " + eventKey + " to topic " + topicName + " :" + JSON.stringify(payloads));
     });
 }

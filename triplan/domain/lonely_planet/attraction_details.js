@@ -7,22 +7,21 @@ attractionDescriptionExtractor.run = function (attraction) {
 
     const reader = async() => {
 
-        const browser = await puppeteer.launch({
-            headless: true,
-            args: ['--no-sandbox']
-        });
-        const page = await browser.newPage();
-        await page.setViewport({ width: 1920, height: 926 });
-
 
         try {
             console.log("Start the description scrapper for attraction: "  + attraction.name + " (url: " + attraction.url + ")");
 
-            const response = await
-            page.goto(
+            const browser = await puppeteer.launch({
+                headless: true,
+                args: ['--no-sandbox']
+            });
+            const page = await browser.newPage();
+            await page.setViewport({ width: 1920, height: 926 });
+
+            const response = await page.goto(
                 attraction.url,
                 {
-                    timeout: 3000000
+                    timeout: 30000
                 }
             );
 
@@ -48,6 +47,8 @@ attractionDescriptionExtractor.run = function (attraction) {
                 }
             }
 
+            return attraction;
+
         } catch (err)  {
             console.log('Error loading attraction description page:', err);
             await browser.close();
@@ -55,19 +56,14 @@ attractionDescriptionExtractor.run = function (attraction) {
     }
 
     reader()
-        .then( description => {
-
-            console.log(" ");
-
+        .then(description => {
+            console.log("Description: ");
             console.log(description);
         })
-        .catch(
-
-            err => {
+        .catch(err => {
                 console.log("=============================================");
                 console.log(attraction.name)
                 console.log(attraction.url)
                 console.log(err)
-            }
-        );
+        });
 }

@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer');
 var async = require('async');
-var attractionExtractor = require('./city_attractions');
+//var attractionExtractor = require('./city_attractions');
 var kafkaInitializer = require('../../infrastructure/kafka/initializer');
 var kafkaProducer = require('../../infrastructure/kafka/producer');
 
@@ -12,7 +12,7 @@ const CITY_TOPIC_NAME =
 const CITY_TOPIC_KEY =
     process.env.PRODUCER_KAFKA_CITY_TOPIC_KEY
         ? process.env.PRODUCER_KAFKA_CITY_TOPIC_KEY
-        : "lonelyplanet-top-10-city-key";
+        : "lonely-planet-top-10-city-key";
 
 var cityExtractor = module.exports;
 
@@ -88,23 +88,23 @@ cityExtractor.run = function (country) {
 
             kafkaInitializer = new Promise((resolve, reject) => {
                 try {
-                    const kafka = kafkaInitializer.initialize('lonelyplanet-city', 1);
-                    return resolve(kafka);
+                    const kafkaClient = kafkaInitializer.initialize('lonely-planet-city', 1);
+                    return resolve(kafkaClient);
                 } catch (err) {
                     return reject(err);
                 }
             });
 
             const initializer = async() => {
-                const kafka = await kafkaInitializer;
-                return kafka;
+                const kafkaClient = await kafkaInitializer;
+                return kafkaClient;
             }
 
             initializer()
-                .then(client => {
+                .then(kafkaClient => {
                     cities.forEach((city) => {
-                        kafkaProducer.produce(client, CITY_TOPIC_NAME, CITY_TOPIC_KEY, city);
-                        attractionExtractor.run(city);
+                        kafkaProducer.produce(kafkaClient, CITY_TOPIC_NAME, CITY_TOPIC_KEY, city);
+                        //attractionExtractor.run(city);
                     });
                 })
                 .catch(err => {
