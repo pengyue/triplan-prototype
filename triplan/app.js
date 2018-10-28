@@ -1,6 +1,6 @@
 'use strict';
 
-require('events').EventEmitter.defaultMaxListeners = 0
+require('events').EventEmitter.defaultMaxListeners = 0;
 
 // Constants
 const PORT = (process.env.PRODUCER_NODE_UI_LISTEN_PORT) ? process.env.PRODUCER_NODE_UI_LISTEN_PORT : 8000;
