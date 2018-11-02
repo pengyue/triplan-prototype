@@ -10,7 +10,7 @@ const HEALTH_READINESS = "/health-readiness";
 
 const bodyParser = require('body-parser');
 const express = require('express');
-var countryExtractor = require('./domain/lonely_planet/country_producer');
+const countryExtractor = require('./domain/lonely_planet/country_producer');
 
 const app = express();
 
@@ -19,7 +19,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.set('view engine', 'ejs')
 
 // App
-app.get('/city/producer', function (req, res) {
+app.get('/', function (req, res) {
     res.render('index');
 });
 
@@ -31,10 +31,10 @@ app.get(HEALTH_READINESS, function (req, res) {
     res.render("health/readiness");
 });
 
-countryExtractor.run();
-
 app.listen(PORT, HOST);
 
 console.log("Running on http://" + HOST + ":" + PORT);
-console.log(" ");
+
+countryExtractor.run();
+
 

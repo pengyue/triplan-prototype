@@ -1,8 +1,9 @@
 const puppeteer = require('puppeteer');
 const async = require('async');
-const kafkaInitializer = require('../../infrastructure/kafka/initializer');
+// const kafkaInitializer = require('../../infrastructure/kafka/initializer');
 const kafkaProducer = require('../../infrastructure/kafka/producer');
 const attractionDetailsExtractor = require('./attraction_details');
+const browser = require('../../infrastructure/puppeteer/browser');
 
 const ATTRACTION_DELAY_TIME_OUT = 5000;
 const ATTRACTION_TOPIC_NAME =
@@ -21,11 +22,9 @@ attractionExtractor.run = async (city) => {
 
     const reader = async (city) => {
 
-        const browser = await puppeteer.launch({
-            headless: true,
-                args: ['--no-sandbox']
-        });
-        const page = await browser.newPage();
+        const browserInstance = await browser.getBrowserInstance();
+
+        const page = await browserInstance.newPage();
         await page.setViewport({ width: 1920, height: 926 });
 
         try {
@@ -40,7 +39,7 @@ attractionExtractor.run = async (city) => {
 
             if (404 == response._status) {
                 console.log('Error loading attraction list page (404) ...');
-                await browser.close();
+                await browserInstance.close();
             } else {
 
                 return await page.evaluate(() => {
@@ -63,38 +62,39 @@ attractionExtractor.run = async (city) => {
                     return attractions;
                 });
 
-                await browser.close();
+                await browserInstance.close();
                 console.log('Close the browser puppeteer connection (attraction).');
 
             }
         } catch (err)  {
             console.log('Error loading attraction list page:', err);
-            await browser.close();
+            await browserInstance.close();
         }
     }
 
     reader(city)
         .then(async (attractions) => {
 
-                const kafkaInitialization = new Promise((resolve, reject) => {
-                    try {
-                        const kafkaClient = kafkaInitializer.initialize('lonely-planet-attraction', 1);
-                        return resolve(kafkaClient);
-                    } catch (err) {
-                        return reject(err);
-                    }
-                });
-
+                // const kafkaInitialization = new Promise((resolve, reject) => {
+                //     try {
+                //         const kafkaClient = kafkaInitializer.initialize('lonely-planet-attraction', 1);
+                //         return resolve(kafkaClient);
+                //     } catch (err) {
+                //         return reject(err);
+                //     }
+                // });
+                //
                 const initializer = async() => {
-                    const kafkaClient = await kafkaInitialization;
-                    return kafkaClient;
+                //     const kafkaClient = await kafkaInitialization;
+                //     return kafkaClient;
+                    return null;
                 }
 
                 initializer()
                     .then(async (kafkaClient) => {
 
                         for (const attraction of attractions) {
-                            kafkaProducer.produce(kafkaClient, ATTRACTION_TOPIC_NAME, ATTRACTION_TOPIC_KEY, attraction);
+                            // kafkaProducer.produce(kafkaClient, ATTRACTION_TOPIC_NAME, ATTRACTION_TOPIC_KEY, attraction);
                             await delayLog(attraction);
                         }
 

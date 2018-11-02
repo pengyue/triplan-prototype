@@ -4,7 +4,7 @@ var cityExtractor = require('./top_10_citiy_producer');
 
 var eventPublisher = module.exports;
 
-eventPublisher.run = async () => {
+eventPublisher.run = async (browser) => {
     // var countries = require(COUNTRY_JSON_DATA_FILE)
     // console.log(countries);
     // countries.forEach( function(node){
@@ -18,5 +18,15 @@ eventPublisher.run = async () => {
     await cityExtractor.run({
         "name": "Thailand",
         "url": "https://www.lonelyplanet.com/thailand"
+    });
+
+    await cityExtractor.run({
+        "name": "Italy",
+        "url": "https://www.lonelyplanet.com/italy"
+    });
+
+    await cityExtractor.run({
+        "name": "France",
+        "url": "https://www.lonelyplanet.com/france"
     });
 }
