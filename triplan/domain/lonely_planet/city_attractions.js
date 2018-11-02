@@ -1,9 +1,10 @@
 const puppeteer = require('puppeteer');
-var async = require('async');
-var kafkaInitializer = require('../../infrastructure/kafka/initializer');
-var kafkaProducer = require('../../infrastructure/kafka/producer');
-// var attractionDetailsExtractor = require('./attraction_details');
+const async = require('async');
+const kafkaInitializer = require('../../infrastructure/kafka/initializer');
+const kafkaProducer = require('../../infrastructure/kafka/producer');
+const attractionDetailsExtractor = require('./attraction_details');
 
+const ATTRACTION_DELAY_TIME_OUT = 5000;
 const ATTRACTION_TOPIC_NAME =
     process.env.PRODUCER_KAFKA_ATTRACTION_TOPIC_NAME
         ? process.env.PRODUCER_KAFKA_ATTRACTION_TOPIC_NAME
@@ -16,7 +17,7 @@ const ATTRACTION_TOPIC_KEY =
 
 var attractionExtractor = module.exports;
 
-attractionExtractor.run = function (city) {
+attractionExtractor.run = async (city) => {
 
     const reader = async (city) => {
 
@@ -62,6 +63,9 @@ attractionExtractor.run = function (city) {
                     return attractions;
                 });
 
+                await browser.close();
+                console.log('Close the browser puppeteer connection (attraction).');
+
             }
         } catch (err)  {
             console.log('Error loading attraction list page:', err);
@@ -70,9 +74,7 @@ attractionExtractor.run = function (city) {
     }
 
     reader(city)
-        .then(attractions => {
-
-                console.log(" ");
+        .then(async (attractions) => {
 
                 kafkaInitializer = new Promise((resolve, reject) => {
                     try {
@@ -89,12 +91,15 @@ attractionExtractor.run = function (city) {
                 }
 
                 initializer()
-                    .then(kafkaClient => {
-                        attractions.forEach((attraction) => {
-                            console.log('================> Pushing attraction to kafka' + attraction.name);
+                    .then(async (kafkaClient) => {
+
+                        for (const attraction of attractions) {
                             kafkaProducer.produce(kafkaClient, ATTRACTION_TOPIC_NAME, ATTRACTION_TOPIC_KEY, attraction);
-                            //attractionDetailsExtractor.run(attraction);
-                        });
+                            await delayLog(attraction);
+                        }
+
+                        console.log('Attractions Crawling Done!');
+
                     })
                     .catch(err => {
                         console.error(err);
@@ -102,4 +107,14 @@ attractionExtractor.run = function (city) {
 
             })
             .catch(err => console.log(err));
+}
+
+const delayLog = async (attraction) => {
+    await delay();
+    console.log(attraction);
+    await attractionDetailsExtractor.run(attraction);
+};
+
+const delay = function() {
+    return new Promise(resolve => setTimeout(resolve, ATTRACTION_DELAY_TIME_OUT));
 }

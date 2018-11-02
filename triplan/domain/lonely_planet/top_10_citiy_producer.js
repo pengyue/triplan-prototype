@@ -1,9 +1,10 @@
 const puppeteer = require('puppeteer');
-var async = require('async');
-//var attractionExtractor = require('./city_attractions');
-var kafkaInitializer = require('../../infrastructure/kafka/initializer');
-var kafkaProducer = require('../../infrastructure/kafka/producer');
+const async = require('async');
+var attractionExtractor = require('./city_attractions');
+const kafkaInitializer = require('../../infrastructure/kafka/initializer');
+const kafkaProducer = require('../../infrastructure/kafka/producer');
 
+const CITY_DELAY_TIME_OUT = 2000;
 const CITY_TOPIC_NAME =
     process.env.PRODUCER_KAFKA_CITY_TOPIC_NAME
         ? process.env.PRODUCER_KAFKA_CITY_TOPIC_NAME
@@ -16,7 +17,7 @@ const CITY_TOPIC_KEY =
 
 var cityExtractor = module.exports;
 
-cityExtractor.run = function (country) {
+cityExtractor.run = async (country) => {
 
     const subscriber = async (country) => {
 
@@ -32,7 +33,11 @@ cityExtractor.run = function (country) {
         await page.setViewport({width: 1920, height: 926});
 
         try {
-            const response = await page.goto(country.url);
+            const response = await page.goto(
+                country.url,
+                {
+                    timeout: 3000000
+                });
 
             if (404 == response._status) {
                 console.log('Error loading city page (404) ...');
@@ -56,6 +61,7 @@ cityExtractor.run = function (country) {
                     // get the top 10 city elements
                     let top10CitiesElms = document.querySelectorAll('ul.tlist__secondary > li.tlist__secondary-item');
                     // get the city data
+
                     top10CitiesElms.forEach((cityElement) => {
                         let city = {};
                         try {
@@ -73,6 +79,9 @@ cityExtractor.run = function (country) {
                     return cities;
 
                 });
+
+                await browser.close();
+                console.log('Close the browser puppeteer connection (city).');
             }
 
         } catch (err)  {
@@ -82,40 +91,52 @@ cityExtractor.run = function (country) {
     }
 
     subscriber(country)
-        .then( cities => {
+        .then(async (cities) => {
 
-            console.log(" ");
-
-            kafkaInitializer = new Promise((resolve, reject) => {
-                try {
-                    const kafkaClient = kafkaInitializer.initialize('lonely-planet-city', 1);
-                    return resolve(kafkaClient);
-                } catch (err) {
-                    return reject(err);
-                }
-            });
-
-            const initializer = async() => {
-                const kafkaClient = await kafkaInitializer;
-                return kafkaClient;
-            }
-
-            initializer()
-                .then(kafkaClient => {
-                    cities.forEach((city) => {
-                        kafkaProducer.produce(kafkaClient, CITY_TOPIC_NAME, CITY_TOPIC_KEY, city);
-                        //attractionExtractor.run(city);
-                    });
-                })
-                .catch(err => {
-                    console.error(err);
+                kafkaInitializer = new Promise((resolve, reject) => {
+                    try {
+                        const kafkaClient = kafkaInitializer.initialize('lonely-planet-city', 1);
+                        return resolve(kafkaClient);
+                    } catch (err) {
+                        return reject(err);
+                    }
                 });
+
+                const initializer = async() => {
+                    const kafkaClient = await kafkaInitializer;
+                    return kafkaClient;
+                }
+
+                initializer()
+                    .then(async (kafkaClient) => {
+
+                        for (const city of cities) {
+                            kafkaProducer.produce(kafkaClient, CITY_TOPIC_NAME, CITY_TOPIC_KEY, city);
+                            await delayLog(city);
+                        }
+
+                        console.log('City Crawling ...');
+                    })
+                    .catch(
+                        err => console.log(err)
+                    );
 
         })
         .catch(
             err => console.log(err)
         );
+};
+
+const delayLog = async (city) => {
+    await delay();
+    console.log(city);
+    await attractionExtractor.run(city);
+};
+
+const delay = function() {
+    return new Promise(resolve => setTimeout(resolve, CITY_DELAY_TIME_OUT));
 }
+
 
 
 
