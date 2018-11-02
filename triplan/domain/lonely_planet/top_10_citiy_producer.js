@@ -1,6 +1,6 @@
 const puppeteer = require('puppeteer');
 const async = require('async');
-var attractionExtractor = require('./city_attractions');
+const attractionExtractor = require('./city_attractions');
 const kafkaInitializer = require('../../infrastructure/kafka/initializer');
 const kafkaProducer = require('../../infrastructure/kafka/producer');
 
@@ -93,7 +93,7 @@ cityExtractor.run = async (country) => {
     subscriber(country)
         .then(async (cities) => {
 
-                kafkaInitializer = new Promise((resolve, reject) => {
+                const kafkaInitialization = new Promise((resolve, reject) => {
                     try {
                         const kafkaClient = kafkaInitializer.initialize('lonely-planet-city', 1);
                         return resolve(kafkaClient);
@@ -103,7 +103,7 @@ cityExtractor.run = async (country) => {
                 });
 
                 const initializer = async() => {
-                    const kafkaClient = await kafkaInitializer;
+                    const kafkaClient = await kafkaInitialization;
                     return kafkaClient;
                 }
 

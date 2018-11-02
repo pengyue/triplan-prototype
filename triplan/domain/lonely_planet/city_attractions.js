@@ -76,7 +76,7 @@ attractionExtractor.run = async (city) => {
     reader(city)
         .then(async (attractions) => {
 
-                kafkaInitializer = new Promise((resolve, reject) => {
+                const kafkaInitialization = new Promise((resolve, reject) => {
                     try {
                         const kafkaClient = kafkaInitializer.initialize('lonely-planet-attraction', 1);
                         return resolve(kafkaClient);
@@ -86,7 +86,7 @@ attractionExtractor.run = async (city) => {
                 });
 
                 const initializer = async() => {
-                    const kafkaClient = await kafkaInitializer;
+                    const kafkaClient = await kafkaInitialization;
                     return kafkaClient;
                 }
 
