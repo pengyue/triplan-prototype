@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 const async = require('async');
 const attractionExtractor = require('./city_attractions');
-// const kafkaInitializer = require('../../infrastructure/kafka/initializer');
+const kafkaInitializer = require('../../infrastructure/kafka/initializer');
 const kafkaProducer = require('../../infrastructure/kafka/producer');
 const browser = require('../../infrastructure/puppeteer/browser');
 
@@ -38,8 +38,8 @@ cityExtractor.run = async (country) => {
                 });
 
             if (404 == response._status) {
-                console.log('Error loading city page (404) ...');
-                await browserInstance.close();
+                console.log('Error (404) crawler cities for country (' + country.name + ') ...... ');
+                return null;
             } else {
 
                 // click on the button to expand list
@@ -58,8 +58,6 @@ cityExtractor.run = async (country) => {
 
                     // get the top 10 city elements
                     let top10CitiesElms = document.querySelectorAll('ul.tlist__secondary > li.tlist__secondary-item');
-                    // get the city data
-
                     top10CitiesElms.forEach((cityElement) => {
                         let city = {};
                         try {
@@ -78,43 +76,42 @@ cityExtractor.run = async (country) => {
 
                 });
 
-                await browserInstance.close();
-                console.log('Close the browser puppeteer connection (city).');
             }
 
         } catch (err)  {
             console.log('Error loading city page:', err);
-            await browserInstance.close();
+            return null;
         }
     }
 
     subscriber(country)
         .then(async (cities) => {
 
-                // const kafkaInitialization = new Promise((resolve, reject) => {
-                //     try {
-                //         const kafkaClient = kafkaInitializer.initialize('lonely-planet-city', 1);
-                //         return resolve(kafkaClient);
-                //     } catch (err) {
-                //         return reject(err);
-                //     }
-                // });
+                if (!cities) {
+                    return null;
+                }
+
+                const kafkaInitialization = new Promise((resolve, reject) => {
+                    try {
+                        const kafkaClient = kafkaInitializer.initialize('lonely-planet-city', 1);
+                        return resolve(kafkaClient);
+                    } catch (err) {
+                        return reject(err);
+                    }
+                });
 
                 const initializer = async() => {
-                    // const kafkaClient = await kafkaInitialization;
-                    // return kafkaClient;
-                    return null;
+                    const kafkaClient = await kafkaInitialization;
+                    return kafkaClient;
                 }
 
                 initializer()
                     .then(async (kafkaClient) => {
 
                         for (const city of cities) {
-                            //kafkaProducer.produce(kafkaClient, CITY_TOPIC_NAME, CITY_TOPIC_KEY, city);
-                            await delayLog(city);
+                            await delayLog(kafkaClient, city);
                         }
 
-                        console.log('City Crawling ...');
                     })
                     .catch(
                         err => console.log(err)
@@ -122,20 +119,17 @@ cityExtractor.run = async (country) => {
 
         })
         .catch(
-            err => console.log(err)
+            error => console.log(error)
         );
 };
 
-const delayLog = async (city) => {
+const delayLog = async (kafkaClient, city) => {
     await delay();
     console.log(city);
+    kafkaProducer.produce(kafkaClient, CITY_TOPIC_NAME, CITY_TOPIC_KEY, city);
     await attractionExtractor.run(city);
 };
 
 const delay = function() {
     return new Promise(resolve => setTimeout(resolve, CITY_DELAY_TIME_OUT));
 }
-
-
-
-

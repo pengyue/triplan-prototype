@@ -26,7 +26,7 @@ attractionDescriptionExtractor.run = async (attraction) => {
             //
             // if (404 == response._status) {
             //     console.log('Error loading attraction description page (404) ...');
-            //     await browser.close();
+            //     return null;
             // } else {
             //     let attractionDescription = await page.evaluate(() => {
             //         let contents = [];
@@ -49,7 +49,7 @@ attractionDescriptionExtractor.run = async (attraction) => {
 
         } catch (err)  {
             console.log('Error loading attraction description page:', err);
-            await browser.close();
+            return null;
         }
     }
 
