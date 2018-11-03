@@ -20,9 +20,9 @@ var attractionExtractor = module.exports;
 
 attractionExtractor.run = async (city) => {
 
-    const reader = async (city) => {
+    const browserInstance = await browser.getBrowserInstance();
 
-        const browserInstance = await browser.getBrowserInstance();
+    const reader = async (city) => {
 
         const page = await browserInstance.newPage();
         await page.setViewport({ width: 1920, height: 926 });
@@ -96,6 +96,8 @@ attractionExtractor.run = async (city) => {
                         for (const attraction of attractions) {
                             await delayLog(kafkaClient, attraction);
                         }
+
+                        // browserInstance.close();
 
                     })
                     .catch(err => {

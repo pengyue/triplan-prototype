@@ -112,6 +112,8 @@ cityExtractor.run = async (country) => {
                             await delayLog(kafkaClient, city);
                         }
 
+                        // browserInstance.close();
+
                     })
                     .catch(
                         err => console.log(err)
