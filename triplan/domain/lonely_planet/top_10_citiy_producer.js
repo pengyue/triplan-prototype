@@ -1,11 +1,9 @@
-const puppeteer = require('puppeteer');
 const async = require('async');
 const attractionExtractor = require('./city_attractions');
 const kafkaInitializer = require('../../infrastructure/kafka/initializer');
 const kafkaProducer = require('../../infrastructure/kafka/producer');
 const browser = require('../../infrastructure/puppeteer/browser');
 
-const CITY_DELAY_TIME_OUT = 2000;
 const CITY_TOPIC_NAME =
     process.env.PRODUCER_KAFKA_CITY_TOPIC_NAME
         ? process.env.PRODUCER_KAFKA_CITY_TOPIC_NAME
@@ -20,63 +18,92 @@ const cityExtractor = module.exports;
 
 cityExtractor.run = async (country) => {
 
-    const browserInstance = await browser.getBrowserInstance();
+    const reader = async (country) => {
 
-    const subscriber = async (country) => {
-
-        console.log("Start the city scrapper for country: " + country.name + " (url: " + country.url + ")");
-
-        const page = await browserInstance.newPage();
-
-        await page.setViewport({width: 1920, height: 926});
+        console.log("Start the city scrapper for country: " + country.name + " ( url: " + country.url + " )");
 
         try {
-            const response = await page.goto(
-                country.url,
-                {
-                    timeout: 3000000
-                });
 
-            if (404 == response._status) {
-                console.log('Error (404) crawler cities for country (' + country.name + ') ...... ');
-                return null;
-            } else {
+            const cluster = await browser.getBrowserInstance();
 
-                // click on the button to expand list
-                var SELECTOR = "div > button.js-top-places";
+            const countryProcess = await cluster.task(async ({ page, data: country }) => {
 
-                await page.focus(SELECTOR);
+                const response = await page.goto(country.url, { waitUntil: 'domcontentloaded' });
 
-                await page.waitFor(1000);
+                if (404 == response._status) {
+                    console.log('Error (404) crawler cities for country (' + country.name + ') ...... ');
+                    return null;
+                } else {
+                    // click on the button to expand list
+                    var SELECTOR = "div > button.js-top-places";
 
-                await page.click(SELECTOR);
+                    await page.focus(SELECTOR);
 
-                // get city details
-                return await page.evaluate(() => {
+                    await page.waitFor(1000);
 
-                    let cities = [];
+                    await page.click(SELECTOR);
 
-                    // get the top 10 city elements
-                    let top10CitiesElms = document.querySelectorAll('ul.tlist__secondary > li.tlist__secondary-item');
-                    top10CitiesElms.forEach((cityElement) => {
-                        let city = {};
-                        try {
-                            city.name = cityElement.querySelector('a').innerText;
-                            city.url = cityElement.querySelector('a').href;
+                    // get city details
+                    (await page.evaluate(() => {
 
-                        } catch (exception) {
-                            console.log(exception);
+                        let cities = [];
+
+                        // get the top 10 city elements
+                        let top10CitiesElms = document.querySelectorAll('ul.tlist__secondary > li.tlist__secondary-item');
+                        top10CitiesElms.forEach((cityElement) => {
+                            let city = {};
+                            try {
+                                city.name = cityElement.querySelector('a').innerText;
+                                city.url = cityElement.querySelector('a').href;
+
+                            } catch (exception) {
+                                console.log("city-parsing: " + exception);
+                            }
+
+                            cities.push(city);
+
+                        });
+
+                        return cities;
+
+                    })).forEach((city) => {
+
+                        if (!city) {
+                            return null;
                         }
 
-                        cities.push(city);
+                        const kafkaInitialization = new Promise((resolve, reject) => {
+                            try {
+                                const kafkaClient = kafkaInitializer.initialize('lonely-planet-city', 1);
+                                return resolve(kafkaClient);
+                            } catch (err) {
+                                return reject(err);
+                            }
+                        });
+
+                        const initializer = async() => {
+                            return await kafkaInitialization;
+                        }
+
+                        initializer()
+                            .then(async (kafkaClient) => {
+                                kafkaProducer.produce(kafkaClient, CITY_TOPIC_NAME, CITY_TOPIC_KEY, city);
+                                console.log('City message pushed ...');
+                                await attractionExtractor.run(city);
+                            })
+                            .catch(
+                                err => console.log("city-pushing: " + err)
+                            );
+
 
                     });
+                }
+            });
 
-                    return cities;
+            console.log("Queueing country (" + country.name + ") ... ");
+            await cluster.queue(country, countryProcess);
 
-                });
-
-            }
+            await cluster.idle();
 
         } catch (err)  {
             console.log('Error loading city page:', err);
@@ -84,54 +111,8 @@ cityExtractor.run = async (country) => {
         }
     }
 
-    subscriber(country)
-        .then(async (cities) => {
-
-                if (!cities) {
-                    return null;
-                }
-
-                const kafkaInitialization = new Promise((resolve, reject) => {
-                    try {
-                        const kafkaClient = kafkaInitializer.initialize('lonely-planet-city', 1);
-                        return resolve(kafkaClient);
-                    } catch (err) {
-                        return reject(err);
-                    }
-                });
-
-                const initializer = async() => {
-                    const kafkaClient = await kafkaInitialization;
-                    return kafkaClient;
-                }
-
-                initializer()
-                    .then(async (kafkaClient) => {
-
-                        for (const city of cities) {
-                            await delayLog(kafkaClient, city);
-                        }
-
-                        // browserInstance.close();
-
-                    })
-                    .catch(
-                        err => console.log(err)
-                    );
-
-        })
-        .catch(
-            error => console.log(error)
-        );
+    reader(country)
+        .then(async () => console.log("city-result ..."))
+        .catch(error => console.log("city-result-error: " + error));
 };
 
-const delayLog = async (kafkaClient, city) => {
-    await delay();
-    console.log(city);
-    kafkaProducer.produce(kafkaClient, CITY_TOPIC_NAME, CITY_TOPIC_KEY, city);
-    await attractionExtractor.run(city);
-};
-
-const delay = function() {
-    return new Promise(resolve => setTimeout(resolve, CITY_DELAY_TIME_OUT));
-}
